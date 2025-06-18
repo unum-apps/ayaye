@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- https://github.com/unum-apps/ayaye/kubernetes/base?ref=0.1.4rc1
+images:
+- name: unum-apps-ayaye-api
+  newName: gaf3/unum-apps-ayaye-api
+  newTag: 0.1.4rc1
+- name: unum-apps-ayaye-cron
+  newName: gaf3/unum-apps-ayaye-cron
+  newTag: 0.1.4rc1
+- name: unum-apps-ayaye-daemon
+  newName: gaf3/unum-apps-ayaye-daemon
+  newTag: 0.1.4rc1
+- name: unum-apps-ayaye-gui
+  newName: gaf3/unum-apps-ayaye-gui
+  newTag: 0.1.4rc1
