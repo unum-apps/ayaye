@@ -18,6 +18,7 @@ import relations_rest
 
 import prometheus_client
 
+import unum_base
 import unum_ledger
 
 PROCESS = prometheus_client.Gauge("process_seconds", "Time to complete a processing task")
@@ -34,11 +35,17 @@ channel: unum-ayaye
 commands:
 - name: ask
   description: Run a prompt and get an answer back.
+  help: |
+    Just sends what you type write to ChatGPT.
+
+    You can take like a listing from some other command and feed that in here. Just type what you want it to do, ctrl-return for a new line, and paste in the listing.
+
+    Just be careful. This costs money.
   requires: none
   examples:
   - meme: '?'
     args: Do you know what a Unifist is?
-    description: Sees if this account knows what we are
+    description: Sees if this project knows what we are
   usages:
   - name: prompt
     meme: '?'
@@ -50,7 +57,7 @@ commands:
 """
 NAME = f"{WHO}-daemon"
 
-class Daemon: # pylint: disable=too-few-public-methods
+class Daemon(unum_base.AppSource): # pylint: disable=too-few-public-methods
     """
     Daemon class
     """
@@ -65,19 +72,19 @@ class Daemon: # pylint: disable=too-few-public-methods
 
         self.logger = micro_logger.getLogger(self.name)
 
+        self.redis = redis.Redis(host=f'redis.{self.unifist}', encoding="utf-8", decode_responses=True)
+
         self.source = relations_rest.Source(self.unifist, url=f"http://api.{self.unifist}")
 
         with open("/opt/service/secret/openai.json", "r") as openai_file:
             self.openai = openai.Client(api_key = json.load(openai_file)["key"])
 
-        if not unum_ledger.App.one(who=WHO).retrieve(False):
-            unum_ledger.App(who=WHO).create()
+        self.app = unum_ledger.App.one(who=WHO).retrieve(False)
 
-        self.app = unum_ledger.App.one(who=WHO)
-        self.app.meta = yaml.safe_load(META)
-        self.app.update()
+        if not self.app:
+            self.app = self.journal_change("create", unum_ledger.App(who=WHO))
 
-        self.redis = redis.Redis(host=f'redis.{self.unifist}', encoding="utf-8", decode_responses=True)
+        self.journal_change("update", self.app, {"meta": yaml.safe_load(META)})
 
         if (
             not self.redis.exists("ledger/fact") or
@@ -90,44 +97,6 @@ class Daemon: # pylint: disable=too-few-public-methods
             self.group not in [group["name"] for group in self.redis.xinfo_groups("ledger/act")]
         ):
             self.redis.xgroup_create("ledger/act", self.group, mkstream=True)
-
-    def is_active(self, entity_id):
-        """
-        Checks to see if an enity is active
-        """
-
-        return (
-            unum_ledger.Entity.one(
-                id=entity_id,
-                status="active"
-            ).retrieve(False) is not None
-            and
-            unum_ledger.Herald.one(
-                entity_id=entity_id,
-                app_id=self.app.id,
-                status="active"
-            ).retrieve(False) is not None
-        )
-
-    def act(self, **act):
-        """
-        Creates an act if needed
-        """
-
-        # If this person isn't active, don't write anything
-
-        if not self.is_active(act["entity_id"]):
-            return
-
-        # Create the act
-
-        act = unum_ledger.Act(**act).create()
-
-        # Log ig, metric it to Prometheus, throw it on the stream for consupmtion
-
-        self.logger.info("act", extra={"act": {"id": act.id}})
-        ACTS.observe(1)
-        self.redis.xadd("ledger/act", fields={"act": json.dumps(act.export())})
 
     def command_ask(self, instance):
         """
@@ -152,7 +121,7 @@ class Daemon: # pylint: disable=too-few-public-methods
 
         text = response.output_text
 
-        self.act(
+        self.create_act(
             entity_id=instance["what"]["entity_id"],
             app_id=self.app.id,
             when=int(time.time()),
