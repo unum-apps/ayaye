@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ayaye
+spec:
+  project: ayaye
+  source:
+    repoURL: https://github.com/unifist/platform
+    path: unums/{{ unum }}/apps/ayaye
+    targetRevision: HEAD
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ayaye
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

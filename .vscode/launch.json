@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "daemon",
+            "type": "python",
+            "request": "attach",
+            "port": 24437,
+            "host": "localhost",
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}/daemon",
+                    "remoteRoot": "/opt/service"
+                }
+            ]
+        }
+    ]
+}
