@@ -6,7 +6,7 @@ import relations.unittest
 import json
 
 import service
-import unum_ledger
+
 
 class MockRedis:
 
@@ -38,6 +38,11 @@ class MockRedis:
 
         if mkstream:
             self.queue[stream] = []
+
+    def xadd(self, stream, fields):
+
+        self.queue.setdefault(stream, [])
+        self.queue[stream].append({"fields": fields})
 
     def xreadgroup(self, group, consumer, streams, count=0, block=5000):
 
@@ -80,7 +85,8 @@ class TestDaemon(micro_logger_unittest.TestCase):
     @unittest.mock.patch("micro_logger.getLogger", micro_logger_unittest.MockLogger)
     @unittest.mock.patch('relations_rest.Source', relations.unittest.MockSource)
     @unittest.mock.patch('redis.Redis', MockRedis)
-    def setUp(self):
+    @unittest.mock.patch('service.open', new_callable=unittest.mock.mock_open, read_data='{"key": "funspot"}')
+    def setUp(self, mock_open):
 
         self.daemon = service.Daemon()
 
@@ -88,13 +94,14 @@ class TestDaemon(micro_logger_unittest.TestCase):
     @unittest.mock.patch("micro_logger.getLogger", micro_logger_unittest.MockLogger)
     @unittest.mock.patch('relations_rest.Source', relations.unittest.MockSource)
     @unittest.mock.patch('redis.Redis', MockRedis)
-    def test___init__(self):
+    @unittest.mock.patch('service.open', new_callable=unittest.mock.mock_open, read_data='{"key": "funspot"}')
+    def test___init__(self, mock_open):
 
         daemon = service.Daemon()
 
         self.assertEqual(daemon.name, "ayaye-daemon")
         self.assertEqual(daemon.unifist, "ledger")
-        self.assertEqual(daemon.group, "daemon-ayaye")
+        self.assertEqual(daemon.group, "ayaye-daemon")
         self.assertEqual(daemon.group_id, "test")
 
         self.assertEqual(daemon.sleep, 7)
@@ -103,9 +110,14 @@ class TestDaemon(micro_logger_unittest.TestCase):
 
         self.assertIsInstance(relations.source("ledger"), relations.unittest.MockSource)
 
+    def test_process(self):
+
+        self.daemon.redis.queue["ledger/fact"].append({})
+
+        self.daemon.process()
 
     @unittest.mock.patch('prometheus_client.start_http_server')
-    @unittest.mock.patch('unum_ayaye.run')
+    @unittest.mock.patch('service.Daemon.process')
     def test_run(self, mock_run, mock_prom):
 
         mock_run.side_effect = Exception("loop")

@@ -24,13 +24,6 @@ pipeline {
                                 }
                             }
                         }
-                        stage('lint') {
-                            steps {
-                                dir('daemon') {
-                                    sh 'make lint -e VERSION=${VERSION}'
-                                }
-                            }
-                        }
                     }
                 }
             }

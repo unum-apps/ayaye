@@ -77,7 +77,7 @@ class Daemon(unum_base.AppSource): # pylint: disable=too-few-public-methods
         self.source = relations_rest.Source(self.unifist, url=f"http://api.{self.unifist}")
 
         with open("/opt/service/secret/openai.json", "r") as openai_file:
-            self.openai = openai.Client(api_key = json.load(openai_file)["key"])
+            self.openai = openai.Client(api_key=json.load(openai_file)["key"])
 
         self.app = unum_ledger.App.one(who=WHO).retrieve(False)
 
