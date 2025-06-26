@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: daemon
-        image: ayaye-daemon
+        image: unum-apps-ayaye-daemon
         imagePullPolicy: Always
         env:
         - name: PYTHONUNBUFFERED

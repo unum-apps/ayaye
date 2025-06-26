@@ -1,6 +1,7 @@
 ACCOUNT?=$(shell cat ../ACCOUNT)
-IMAGE=unum-origins-ayaye-daemon
+IMAGE=unum-apps-ayaye-daemon
 VERSION?=dev
+SEMVER?=$(VERSION)
 DEBUG_PORT=24437
 TTY=$(shell if tty -s; then echo "-it"; fi)
 VOLUMES=-v ${PWD}/lib/:/opt/service/lib/ \
@@ -12,7 +13,7 @@ ENVIRONMENT=-e PYTHONDONTWRITEBYTECODE=1 \
 			-e test="python -m unittest -v" \
 			-e debug="python -m ptvsd --host 0.0.0.0 --port 5678 --wait -m unittest -v"
 
-.PHONY: build shell debug test lint image push
+.PHONY: build shell debug test lint image push semver
 
 build:
 	docker build . -t $(ACCOUNT)/$(IMAGE):$(VERSION)
@@ -33,3 +34,8 @@ image: build
 
 push:
 	docker push $(ACCOUNT)/$(IMAGE):$(VERSION)
+
+semver:
+	docker pull $(ACCOUNT)/$(IMAGE):$(VERSION)
+	docker tag $(ACCOUNT)/$(IMAGE):$(VERSION) $(ACCOUNT)/$(IMAGE):$(SEMVER)
+	docker push $(ACCOUNT)/$(IMAGE):$(SEMVER)
